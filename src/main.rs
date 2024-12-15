@@ -96,16 +96,15 @@ fn split_file(file_name: &str, chunk_size: usize) -> io::Result<()> {
 }
 
 fn unsplit_file(file_name: &str) -> io::Result<()> {
-    Path::new(file_name);
     let mut part_number = 1;
     let mut parts = Vec::new();
     let mut total_size = 0;
 
-    //cautare bucati de file
     loop {
+        
         let part_filename = format!("{}.part{:04}.split", file_name, part_number);
         if !Path::new(&part_filename).exists() {
-            break;
+            return Err(io::Error::new(io::ErrorKind::NotFound, format!("Missing part: {}.part{:04}.split", file_name, part_number)));
         }
         let mut part_file = File::open(&part_filename)?;
         let mut part_data = Vec::new();
@@ -113,10 +112,11 @@ fn unsplit_file(file_name: &str) -> io::Result<()> {
         total_size += part_data.len();
         parts.push(part_data);
         part_number += 1;
-    }
 
-    if parts.is_empty() {
-        return Err(io::Error::new(io::ErrorKind::NotFound, "No parts found"));
+        let next_part_filename = format!("{}.part{:04}.split", file_name, part_number);
+        if !Path::new(&next_part_filename).exists() {
+            break;
+        }
     }
 
     //reasamblare
@@ -127,7 +127,6 @@ fn unsplit_file(file_name: &str) -> io::Result<()> {
         output_file.write_all(&part)?;
     }
 
-    println!("Reassembled {} bytes into '{:?}'", total_size, output_file_name);
+    println!("Reassembled {} bytes into {:?}", total_size, output_file_name);
     Ok(())
 }
-
